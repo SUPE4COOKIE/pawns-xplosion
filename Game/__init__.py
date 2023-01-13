@@ -1,0 +1,1 @@
+from Game.main import game
