@@ -1,17 +1,17 @@
 import tkinter as tk
 from Game.Tile import Tile
 
-
 class game:
     def __init__(self, BOX_SIZE=100, TITLE="Game") -> None:
         self.BOX_SIZE = BOX_SIZE
         self.COLORS = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white"]
         self.eliminated_players = []
-        self.PLAYER_COUNT = 3  # self.AskPlayerCount()
+        self.PLAYER_COUNT = 4  # self.AskPlayerCount()
         self.player = 0
         self.COLUMN, self.ROW = 3,4 # self.AskColumnRow()
         self.WIDTH = BOX_SIZE*self.COLUMN
         self.HEIGHT = BOX_SIZE*self.ROW
+        self.game_over = False
         self.window = tk.Tk()
         self.canvas = tk.Canvas(
             self.window, width=self.WIDTH, height=self.HEIGHT, bg="blue", highlightbackground="black")
@@ -56,6 +56,19 @@ class game:
         # anything else
         return 3
     
+    def IsGameOver(func):
+        def wrapper(self, *args, **kwargs):
+            if not self.game_over:
+                return func(self, *args, **kwargs)
+        return wrapper
+    
+    def IsTileOwner(func):
+        def wrapper(self,*args,**kwargs):
+            if self.tiles[args[0]][args[1]].owner == None or self.tiles[args[0]][args[1]].owner == self.COLORS[self.player]:
+                return func(self,*args,**kwargs)
+        return wrapper
+
+    
     def GetNeighbours(self, x, y):
         #return direct neighbours (no border)
         neighbours = []
@@ -69,6 +82,8 @@ class game:
             neighbours.append(self.tiles[x][y+1])
         return neighbours
 
+    @IsTileOwner
+    @IsGameOver
     def ClickListener(self, x,y):
         tile = self.tiles[x][y]
         if tile.SetPawns(tile.pawns+1, self.COLORS[self.player]) == False:
@@ -114,10 +129,14 @@ class game:
                         if self.COLORS[i] not in count_dict:
                             if i not in self.eliminated_players:
                                 print("Player", self.COLORS[i], "has been eliminated")
+                                eliminated_message = tk.Message(self.window, text="Player %s (%s) has been eliminated!" % (str(i+1), self.COLORS[i]), width=200)
+                                eliminated_message.pack()
+                                self.window.after(2500, eliminated_message.destroy)
                                 self.eliminated_players.append(i)
                                 break
         
 
     def WinMessage(self):
-        #tk.messagebox.showinfo("Pop-up", "This is a pop-up window.")
-        print("Player", self.player+1, "won!")
+        self.game_over = True
+        tk.Message(self.window, text="Player %s (%s) won!" % (str(self.player+1), self.COLORS[self.player]), width=200).pack()
+        tk.Button(self.window, text="Quit", command=self.window.destroy).pack()
