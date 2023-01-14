@@ -21,6 +21,7 @@ class Tile:
             self.canvas.delete(self.leftpawn)
             self.canvas.delete(self.rightpawn)
         self.pawns = 0
+        self.owner = None
 
     def CapacityCheck(func):
         def wrapper(self,*args,**kwargs):

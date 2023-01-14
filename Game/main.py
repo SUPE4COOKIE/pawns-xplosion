@@ -87,6 +87,7 @@ class game:
                     self.Explosion(tile.x,tile.y)
             except RecursionError: # caused by not enough space to explode (too many pawns)
                 pass
+        #self.CheckPawnOwnerState()
 
     def ChangePlayer(self):
         self.player = (self.player+1) % self.PLAYER_COUNT
@@ -118,4 +119,5 @@ class game:
         
 
     def WinMessage(self):
+        #tk.messagebox.showinfo("Pop-up", "This is a pop-up window.")
         print("Player", self.player+1, "won!")
