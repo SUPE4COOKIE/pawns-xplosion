@@ -5,7 +5,10 @@ from Game.Tile import Tile
 class game:
     def __init__(self, BOX_SIZE=100, TITLE="Game") -> None:
         self.BOX_SIZE = BOX_SIZE
+        self.COLORS = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white"]
+        self.eliminated_players = []
         self.PLAYER_COUNT = 3  # self.AskPlayerCount()
+        self.player = 0
         self.COLUMN, self.ROW = 3,4 # self.AskColumnRow()
         self.WIDTH = BOX_SIZE*self.COLUMN
         self.HEIGHT = BOX_SIZE*self.ROW
@@ -13,7 +16,7 @@ class game:
         self.canvas = tk.Canvas(
             self.window, width=self.WIDTH, height=self.HEIGHT, bg="blue", highlightbackground="black")
 
-        self.tiles = [[Tile(self.BOX_SIZE,self.canvas , self.SetCapacity(x, y),x,y,self.Explosion) for y in range(self.ROW)]
+        self.tiles = [[Tile(self.BOX_SIZE,self.canvas , self.SetCapacity(x, y),x,y,self.ClickListener) for y in range(self.ROW)]
                       for x in range(self.COLUMN)]
         self.window.title(TITLE)
         self.window.resizable(False, False)
@@ -65,16 +68,54 @@ class game:
         if y < self.ROW-1:
             neighbours.append(self.tiles[x][y+1])
         return neighbours
+
+    def ClickListener(self, x,y):
+        tile = self.tiles[x][y]
+        if tile.SetPawns(tile.pawns+1, self.COLORS[self.player]) == False:
+            tile.ClearPawns()
+            self.Explosion(x,y)
+        self.CheckPawnOwnerState()
+        self.ChangePlayer()
     
     def Explosion(self, x, y):
         #add 1 to every case around
         neigbours = self.GetNeighbours(x,y)
         for tile in neigbours:
-            tile.AddPawn()
+            try:
+                if tile.SetPawns(tile.pawns+1, self.COLORS[self.player]) == False: # in case of another explosion 
+                    tile.ClearPawns()
+                    self.Explosion(tile.x,tile.y)
+            except RecursionError: # caused by not enough space to explode (too many pawns)
+                pass
 
+    def ChangePlayer(self):
+        self.player = (self.player+1) % self.PLAYER_COUNT
+        if self.player in self.eliminated_players:
+            self.ChangePlayer()
+        for i in self.tiles:
+            for tile in i:
+                tile.ChangeColor(self.COLORS[self.player])
+
+    def CheckPawnOwnerState(self):
+        #contains the attributes of every tile in tiles
+        pawns_owner = [tile.owner for i in self.tiles for tile in i]
+        count_dict = dict((i,pawns_owner.count(i)) for i in set(pawns_owner) if i is not None)
+        print(count_dict)
+        if len(count_dict) == 1:
+            for key in count_dict:
+                if count_dict[key] != 1: # if the only player has more than 1 pawn (meaning it's not the first rounds)
+                    self.WinMessage()
+        elif len(count_dict) < self.PLAYER_COUNT:
+            for key in count_dict:
+                if count_dict[key] != 1: # if one of the player has more than 1 pawn (meaning it's not the first rounds)
+                    #loop through the colors (for the player number) and check if the color is in the count_dict if not add to eliminated_players
+                    for i in range(self.PLAYER_COUNT):
+                        if self.COLORS[i] not in count_dict:
+                            if i not in self.eliminated_players:
+                                print("Player", self.COLORS[i], "has been eliminated")
+                                self.eliminated_players.append(i)
+                                break
         
 
-    def ChangeColor(self,color):
-        for x in range(self.COLUMN):
-            for y in range(self.ROW):
-                self.tiles[x][y].PlaceTile(color)
+    def WinMessage(self):
+        print("Player", self.player+1, "won!")
