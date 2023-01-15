@@ -12,5 +12,6 @@
 #                     Martin Wojtasikiewicz
 import Game
 game = Game.game()
+game.LoadGameState()
 game.window.mainloop()
 

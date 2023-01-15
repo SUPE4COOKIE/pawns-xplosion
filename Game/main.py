@@ -1,5 +1,9 @@
 import tkinter as tk
 from Game.Tile import Tile
+from os import remove
+import json
+# we use base64 to encode our save file
+from base64 import b64encode, b64decode # not the best option but none would be perfect since it could be easily decoded with source code
 
 class game:
     def __init__(self, BOX_SIZE=100, TITLE="Game") -> None:
@@ -46,16 +50,6 @@ class game:
                     print("Invalid input. Try again.")
             print("Invalid input. Try again.")
 
-    def SetCapacity(self, x, y):
-        # corners
-        if (x == 0 and y == 0) or (x == 0 and y == self.ROW-1) or (x == self.COLUMN-1 and y == 0) or (x == self.COLUMN-1 and y == self.ROW-1):
-            return 1
-        # edges
-        elif x == 0 or y == 0 or x == self.COLUMN-1 or y == self.ROW-1:
-            return 2
-        # anything else
-        return 3
-    
     def IsGameOver(func):
         def wrapper(self, *args, **kwargs):
             if not self.game_over:
@@ -67,7 +61,47 @@ class game:
             if self.tiles[args[0]][args[1]].owner == None or self.tiles[args[0]][args[1]].owner == self.COLORS[self.player]:
                 return func(self,*args,**kwargs)
         return wrapper
+    
+    @IsGameOver
+    def SaveGameState(self):
+        json_data = {"pos":[],
+                    "player":self.player,
+                    "eliminated_players":self.eliminated_players
+                    }
+        for i in self.tiles:
+            for tile in i:
+                json_data["pos"].append((tile.pawns,tile.owner))
+        json_data = json.dumps(json_data)
+        with open("save", "w") as f:
+            f.write(b64encode(json_data.encode()).decode())
 
+    
+    def LoadGameState(self):
+        try:
+            with open("save", "r") as f:
+                json_data = json.loads(b64decode(f.read().encode()).decode())
+                print(json_data)
+                self.player = json_data["player"] - 1 if json_data["player"] != 0 else self.PLAYER_COUNT - 1
+                self.eliminated_players = json_data["eliminated_players"]
+                for i in range(len(self.tiles)):
+                    for j in range(len(self.tiles[i])):
+                        self.tiles[i][j].SetPawns(json_data["pos"][i*len(self.tiles[i])+j][0],json_data["pos"][i*len(self.tiles[i])+j][1])
+            self.CheckPawnOwnerState()
+            self.ChangePlayer()
+        except FileNotFoundError:
+            pass
+        
+
+    def SetCapacity(self, x, y):
+        # corners
+        if (x == 0 and y == 0) or (x == 0 and y == self.ROW-1) or (x == self.COLUMN-1 and y == 0) or (x == self.COLUMN-1 and y == self.ROW-1):
+            return 1
+        # edges
+        elif x == 0 or y == 0 or x == self.COLUMN-1 or y == self.ROW-1:
+            return 2
+        # anything else
+        return 3
+    
     
     def GetNeighbours(self, x, y):
         #return direct neighbours (no border)
@@ -91,7 +125,9 @@ class game:
             self.Explosion(x,y)
         self.CheckPawnOwnerState()
         self.ChangePlayer()
+        self.SaveGameState()
     
+    @IsGameOver
     def Explosion(self, x, y):
         #add 1 to every case around
         neigbours = self.GetNeighbours(x,y)
@@ -101,8 +137,9 @@ class game:
                     tile.ClearPawns()
                     self.Explosion(tile.x,tile.y)
             except RecursionError: # caused by not enough space to explode (too many pawns)
-                pass
-        #self.CheckPawnOwnerState()
+                self.WinMessage()
+                return
+        self.CheckPawnOwnerState()
 
     def ChangePlayer(self):
         self.player = (self.player+1) % self.PLAYER_COUNT
@@ -112,6 +149,7 @@ class game:
             for tile in i:
                 tile.ChangeColor(self.COLORS[self.player])
 
+    @IsGameOver
     def CheckPawnOwnerState(self):
         #contains the attributes of every tile in tiles
         pawns_owner = [tile.owner for i in self.tiles for tile in i]
@@ -139,4 +177,6 @@ class game:
     def WinMessage(self):
         self.game_over = True
         tk.Message(self.window, text="Player %s (%s) won!" % (str(self.player+1), self.COLORS[self.player]), width=200).pack()
+        remove("save")
         tk.Button(self.window, text="Quit", command=self.window.destroy).pack()
+        tk.Button(self.window, text="Restart", command=lambda : (game(), self.window.destroy())).pack()
