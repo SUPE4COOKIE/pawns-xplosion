@@ -9,9 +9,10 @@
 #                          || |-_\__   /
 #                         ((_/`(____,-'
 #
-#                     Martin Wojtasikiewicz
+#           Martin Wojtasikiewicz - Yanis Kherouni
 import Game
-game = Game.game()
-game.LoadGameState()
-game.window.mainloop()
+if __name__ == "__main__":
+    game = Game.game() # create an instance of the game
+    game.LoadGameState() # load the game state (if there is one)
+    game.window.mainloop()
 
