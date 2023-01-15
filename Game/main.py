@@ -1,5 +1,6 @@
 import tkinter as tk
 from Game.Tile import Tile
+from random import choice
 from os import remove
 import json
 # we use base64 to encode our save file
@@ -10,7 +11,8 @@ class game:
         self.BOX_SIZE = BOX_SIZE
         self.COLORS = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white"]
         self.eliminated_players = []
-        self.PLAYER_COUNT = 4  # self.AskPlayerCount()
+        self.computer = True #self.AskIfComputer()
+        self.PLAYER_COUNT = 2 if self.computer else self.AskPlayerCount() 
         self.player = 0
         self.COLUMN, self.ROW = 3,4 # self.AskColumnRow()
         self.WIDTH = BOX_SIZE*self.COLUMN
@@ -25,6 +27,16 @@ class game:
         self.window.title(TITLE)
         self.window.resizable(False, False)
         self.canvas.pack()
+
+    def AskIfComputer(self):
+        while True:
+            user_input = input(
+                "Do you want to play against computer? (y/n): ")
+            if user_input == "y":
+                return True
+            elif user_input == "n":
+                return False
+            print("Invalid input. Try again.")
 
     def AskPlayerCount(self):
         while True:
@@ -126,6 +138,8 @@ class game:
         self.CheckPawnOwnerState()
         self.ChangePlayer()
         self.SaveGameState()
+        if self.computer:
+            self.ComputerPlay()
     
     @IsGameOver
     def Explosion(self, x, y):
@@ -148,6 +162,19 @@ class game:
         for i in self.tiles:
             for tile in i:
                 tile.ChangeColor(self.COLORS[self.player])
+    
+    def ComputerPlay(self):
+        playable_tiles = []
+        for i in self.tiles:
+            for tile in i:
+                if tile.owner == self.COLORS[self.player] or tile.owner == None:
+                    playable_tiles.append(tile)
+        if choice(playable_tiles).SetPawns(tile.pawns+1, self.COLORS[self.player]) == False:
+            tile.ClearPawns()
+            self.Explosion(tile.x,tile.y)
+        self.CheckPawnOwnerState()
+        self.ChangePlayer()
+        self.SaveGameState()
 
     @IsGameOver
     def CheckPawnOwnerState(self):
